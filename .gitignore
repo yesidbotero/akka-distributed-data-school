@@ -1,0 +1,8 @@
+/logs/
+/project/*-shim.sbt
+/project/project/
+/project/target/
+/target/
+/project
+/.idea
+.DS_store
