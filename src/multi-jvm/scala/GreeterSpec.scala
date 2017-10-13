@@ -50,5 +50,20 @@ class GreeterSpec extends MultiNodeSpec(GreeterSpec) with STMultiNodeSpec with I
 
       enterBarrier("after-1")
     }
+
+    "enviar un saludo" in within(15.seconds) {
+      runOn(nodo1) {
+        greeter ! Greet("Hello")
+      }
+
+      runOn(nodo2){
+        greeter ! Greet("Hola")
+      }
+
+      awaitAssert{
+        greeter ! GetData
+        expectMsg(Set("Hello", "Hola"))
+      }
+    }
   }
 }

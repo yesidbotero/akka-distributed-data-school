@@ -9,6 +9,7 @@ object Greeter {
 
   def props = Props(new Greeter)
   case class Greet(greet: String)
+  case object GetData
 
   private val readMajority = ReadMajority(3.seconds)
   private val writeMajority = WriteMajority(3.seconds)
@@ -27,12 +28,14 @@ class Greeter extends Actor {
   //replicator ! Subscribe(DataKey, self)
 
   override def receive: Receive = {
-    case Greet(greet) =>
-      replicator ! Update(DataKey, ORSet.empty[String], writeMajority, Some(sender()))(_ + " ")
-    case u @ UpdateSuccess(DataKey, Some(originalSender: ActorRef)) =>
-      replicator ! Get(DataKey, readMajority, Some(originalSender))
+    case Greet(greet: String) =>
+      replicator ! Update(DataKey, ORSet.empty[String], writeMajority, Some(sender()))(_ + greet)
+    case _: UpdateResponse[_] =>
+    case _: GetFailure[_] =>
+    case GetData =>
+      replicator ! Get(DataKey, readMajority, Some(sender()))
     case g @ GetSuccess(DataKey, Some(originalSender: ActorRef)) =>
-      val saludos = g.get(DataKey).elements
+      val saludos: Set[String] = g.get(DataKey).elements
       originalSender ! saludos
   }
 }
