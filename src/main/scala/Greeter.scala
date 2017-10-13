@@ -1,4 +1,4 @@
-import akka.actor.{Actor, ActorRef}
+import akka.actor.{Actor, ActorRef, Props}
 import akka.cluster.Cluster
 import akka.cluster.ddata.{DistributedData, ORSet, ORSetKey}
 
@@ -7,6 +7,7 @@ import scala.concurrent.duration._
 object Greeter {
   import akka.cluster.ddata.Replicator._
 
+  def props = Props(new Greeter)
   case class Greet(greet: String)
 
   private val readMajority = ReadMajority(3.seconds)
