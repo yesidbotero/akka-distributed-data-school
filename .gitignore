@@ -1,7 +1,9 @@
-/logs/
-/project/*-shim.sbt
-/project/project/
-/project/target/
-/target/
-/.idea
+logs
+project/*-shim.sbt
+project/project
+project/target
+target
+project
+!project/*.properties
+.idea
 .DS_store

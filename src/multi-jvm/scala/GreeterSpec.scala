@@ -43,7 +43,7 @@ class GreeterSpec extends MultiNodeSpec(GreeterSpec) with STMultiNodeSpec with I
         cluster join node(nodo1).address
       }
 
-      awaitAssert{
+      awaitAssert {
         DistributedData(system).replicator ! GetReplicaCount
         expectMsg(ReplicaCount(roles.size))
       }
@@ -51,18 +51,19 @@ class GreeterSpec extends MultiNodeSpec(GreeterSpec) with STMultiNodeSpec with I
       enterBarrier("after-1")
     }
 
-    "enviar un saludo" in within(15.seconds) {
+
+    "puede agregar y eliminar concurrentemente un elemento, predominando la agregacion" in within(10.seconds) {
       runOn(nodo1) {
-        greeter ! Greet("Hello")
+        greeter ! Greet("Hola!")
       }
 
-      runOn(nodo2){
-        greeter ! Greet("Hola")
+      runOn(nodo2) {
+        greeter ! DeleteGreeting(Greet("Hola!"))
       }
 
-      awaitAssert{
+      awaitAssert {
         greeter ! GetData
-        expectMsg(Set("Hello", "Hola"))
+        expectMsg(Set("Hola!"))
       }
     }
   }
