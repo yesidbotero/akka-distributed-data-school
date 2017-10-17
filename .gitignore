@@ -4,6 +4,6 @@ project/project
 project/target
 target
 project
-!project/*.properties
+!project/plugins.sbt
 .idea
 .DS_store

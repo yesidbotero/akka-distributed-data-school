@@ -1,3 +1,4 @@
+import akka.actor.ActorRef
 import akka.cluster.Cluster
 import akka.cluster.ddata.DistributedData
 import akka.cluster.ddata.Replicator.{GetReplicaCount, ReplicaCount}
@@ -33,16 +34,11 @@ class GreeterSpec extends MultiNodeSpec(GreeterSpec) with STMultiNodeSpec with I
   val cluster = Cluster(system)
   val greeter = system.actorOf(Greeter.props)
 
-
   "Un Greeter" must {
     "unirse a cluster" in within(20.seconds) {
-      runOn(nodo1) {
+      runOn(nodo1, nodo2) {
         cluster join node(nodo1).address
       }
-      runOn(nodo2) {
-        cluster join node(nodo1).address
-      }
-
       awaitAssert {
         DistributedData(system).replicator ! GetReplicaCount
         expectMsg(ReplicaCount(roles.size))
@@ -51,20 +47,57 @@ class GreeterSpec extends MultiNodeSpec(GreeterSpec) with STMultiNodeSpec with I
       enterBarrier("after-1")
     }
 
-
-    "puede agregar y eliminar concurrentemente un elemento, predominando la agregacion" in within(10.seconds) {
+    "Subscribirse al log de remitentes de mensajes" in within(10.seconds) {
       runOn(nodo1) {
+        greeter ! Greet("Hola")
+      }
+      awaitAssert {
+        greeter ! GetLogFromActor
+        val log = expectMsgType[Set[ActorRef]]
+        log.size should be(1)
+      }
+    }
+
+
+    "Desuscribirse del log de remitentes de mensajes" in within(10.seconds) {
+      runOn(nodo1) {
+        greeter ! UnSubscribeToLog
+        greeter ! Greet("Ni Hao")
+      }
+
+      awaitAssert {
+        greeter ! GetLogFromActor
+        val log = expectMsgType[Set[ActorRef]]
+        //Deberìa seguir siendo 1 el número de ActorRef en el log
+        log.size should be(1)
+      }
+    }
+
+    "agregar y eliminar concurrentemente un elemento, predominando la agregacion" in within(20.seconds) {
+      runOn(nodo2) {
         greeter ! Greet("Hola!")
       }
 
-      runOn(nodo2) {
+      runOn(nodo1) {
         greeter ! DeleteGreeting(Greet("Hola!"))
       }
 
       awaitAssert {
         greeter ! GetData
-        expectMsg(Set("Hola!"))
+        //el elemento "Hola!" continua en la data
+        expectMsg(Set("Hola", "Hola!", "Ni Hao"))
       }
     }
+
+    "Puede eliminar todos los elementos" in within(20.seconds) {
+      runOn(nodo2) {
+        greeter ! DeleteData
+      }
+      awaitAssert {
+        greeter ! GetData
+        expectMsg(NoData)
+      }
+    }
+
   }
 }
