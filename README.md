@@ -4,11 +4,14 @@ En este proyecto de prueban las propiedades de los diferentes CRDTs y sus casos 
 Debido a que Akka Distributed Data es una herramienta útil para compartir datos entre nodos en un Cluster de Akka, es objetivo que los test sean ejecutados en diferentes nodos.
 # Tests MultiJvm
 Para ejecutar tests multi-jvm es necesario tener previamente instalado el plugin de sbt,
-para instalarlo basta con agregar la siguiente línea al archivo /project/plugins.sbt:
-```addSbtPlugin("com.typesafe.sbt" % "sbt-multi-jvm" % "0.4.0")```
+para instalarlo basta con agregar la siguiente línea al archivo ```/project/plugins.sbt```:
+
+addSbtPlugin("com.typesafe.sbt" % "sbt-multi-jvm" % "0.4.0")
+
 
 Adicionalmente agregar la librería TestKit para tests multi-nodo al proyecto sbt:
-```"com.typesafe.akka" %% "akka-multi-node-testkit" % "2.5.6"```
+
+"com.typesafe.akka" %% "akka-multi-node-testkit" % "2.5.6"
 
 # Ejecutar los tests
  - Para ejecutar todos los test multi-jvm presentes en el proyecto, ejecutar en la consola de ```sbt: multi-jvm:test```
