@@ -21,7 +21,6 @@ val `akka-distributed-data-school` = project
       "org.scalatest" %% "scalatest" % "3.0.1" % Test),
     fork in run := true,
     // disable parallel tests
-    parallelExecution in Test := false,
-    licenses := Seq(("CC0", url("http://creativecommons.org/publicdomain/zero/1.0")))
+    parallelExecution in Test := false
   )
   .configs (MultiJvm)

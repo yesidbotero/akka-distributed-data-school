@@ -1,9 +1,11 @@
+import akka.actor.ActorRef
 import akka.cluster.Cluster
 import akka.cluster.ddata.DistributedData
 import akka.cluster.ddata.Replicator.{GetReplicaCount, ReplicaCount}
 import akka.remote.testkit.{MultiNodeConfig, MultiNodeSpec}
 import akka.testkit.ImplicitSender
 import com.typesafe.config.ConfigFactory
+
 import scala.concurrent.duration._
 
 object AuthenticatorSpec extends MultiNodeConfig {
@@ -23,7 +25,9 @@ class AuthenticatorSpecMultiJvmNode1 extends AuthenticatorSpec
 class AuthenticatorSpecMultiJvmNode2 extends AuthenticatorSpec
 
 class AuthenticatorSpec extends MultiNodeSpec(AuthenticatorSpec) with STMultiNodeSpec with ImplicitSender {
+
   import AuthenticatorSpec._
+  import Authenticator._
 
   override def initialParticipants: Int = roles.size
 
@@ -42,6 +46,17 @@ class AuthenticatorSpec extends MultiNodeSpec(AuthenticatorSpec) with STMultiNod
 
       enterBarrier("after-1")
     }
-  }
 
+    "Agregar datos a un CRDT" in within(10.seconds) {
+      runOn(node1) {
+        authenticator ! UserInfo("1035873906", "Yesid Botero", "zzc123")
+      }
+
+      awaitAssert {
+        authenticator ! GetData
+        val data = expectMsgType[Map[ActorRef, Set[UserInfo]]]
+        data.head._2.head.id should be("1035873906")
+      }
+    }
+  }
 }
