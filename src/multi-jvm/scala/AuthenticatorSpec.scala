@@ -47,15 +47,25 @@ class AuthenticatorSpec extends MultiNodeSpec(AuthenticatorSpec) with STMultiNod
       enterBarrier("after-1")
     }
 
-    "Agregar datos a un CRDT" in within(10.seconds) {
-      runOn(node1) {
+    "Agregar datos a un CRDT" in within(20.seconds) {
+      runOn(node1, node2) {
         authenticator ! UserInfo("1035873906", "Yesid Botero", "zzc123")
+      }
+
+      runOn(node1) {
+        authenticator ! UserInfo("1035873907", "Yesid Botero", "zzc123")
+        authenticator ! UserInfo("1035873907", "Yesid Botero", "zzc123")
       }
 
       awaitAssert {
         authenticator ! GetData
-        val data = expectMsgType[Map[ActorRef, Set[UserInfo]]]
-        data.head._2.head.id should be("1035873906")
+        val data: Map[ActorRef, Set[UserInfo]] = expectMsgType[Map[ActorRef, Set[UserInfo]]]
+        /*data.head._2.head.id should be("1035873907")
+        data.last._2.head.id should be("1035873906")*/
+        println("_______________________________________________")
+        data.foreach(x => println("element " + x))
+        println("_______________________________________________")
+
       }
     }
   }
