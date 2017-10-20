@@ -47,25 +47,35 @@ class AuthenticatorSpec extends MultiNodeSpec(AuthenticatorSpec) with STMultiNod
       enterBarrier("after-1")
     }
 
-    "Agregar datos a un CRDT" in within(20.seconds) {
-      runOn(node1, node2) {
-        authenticator ! UserInfo("1035873906", "Yesid Botero", "zzc123")
+    "registrar usuarios" in within(20.seconds) {
+      runOn(node1) {
+        authenticator ! Register(UserInfo("1035873906", "Yesid Botero", "zzc123"))
       }
 
-      runOn(node1) {
-        authenticator ! UserInfo("1035873907", "Yesid Botero", "zzc123")
-        authenticator ! UserInfo("1035873907", "Yesid Botero", "zzc123")
+      runOn(node2) {
+        authenticator ! Register(UserInfo("1035873907", "Jorge Botero", "zzc123"))
       }
 
       awaitAssert {
-        authenticator ! GetData
+        authenticator ! GetUsers
         val data: Map[ActorRef, Set[UserInfo]] = expectMsgType[Map[ActorRef, Set[UserInfo]]]
-        /*data.head._2.head.id should be("1035873907")
-        data.last._2.head.id should be("1035873906")*/
-        println("_______________________________________________")
-        data.foreach(x => println("element " + x))
-        println("_______________________________________________")
+        data.size should be (2)
+      }
+    }
 
+    "No almacenar usuarios ya registrados" in within(10.seconds){
+      runOn(node1) {
+        authenticator ! Register(UserInfo("1035873906", "Yesid Botero", "zzc123"))
+      }
+
+      runOn(node2) {
+        authenticator ! Register(UserInfo("1035873907", "Jorge Botero", "zzc123"))
+      }
+
+      awaitAssert {
+        authenticator ! GetUsers
+        val data: Map[ActorRef, Set[UserInfo]] = expectMsgType[Map[ActorRef, Set[UserInfo]]]
+        data.size should be (2)
       }
     }
   }
