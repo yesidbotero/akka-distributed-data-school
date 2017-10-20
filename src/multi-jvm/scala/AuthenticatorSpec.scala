@@ -58,14 +58,15 @@ class AuthenticatorSpec extends MultiNodeSpec(AuthenticatorSpec) with STMultiNod
 
       awaitAssert {
         authenticator ! GetUsers
-        val data: Map[ActorRef, Set[UserInfo]] = expectMsgType[Map[ActorRef, Set[UserInfo]]]
-        data.size should be (2)
+        val data = expectMsgType[Map[ActorRef, Set[UserInfo]]]
+        data.flatMap(_._2).size should be (2)
       }
     }
 
     "No almacenar usuarios ya registrados" in within(10.seconds){
       runOn(node1) {
         authenticator ! Register(UserInfo("1035873906", "Yesid Botero", "zzc123"))
+        authenticator ! Register(UserInfo("1035873908", "Juan Mieles", "zzc123"))
       }
 
       runOn(node2) {
@@ -74,8 +75,8 @@ class AuthenticatorSpec extends MultiNodeSpec(AuthenticatorSpec) with STMultiNod
 
       awaitAssert {
         authenticator ! GetUsers
-        val data: Map[ActorRef, Set[UserInfo]] = expectMsgType[Map[ActorRef, Set[UserInfo]]]
-        data.size should be (2)
+        val data = expectMsgType[Map[ActorRef, Set[UserInfo]]]
+        data.flatMap(_._2).size should be (3)
       }
     }
   }

@@ -1,6 +1,6 @@
 import akka.actor.{Actor, ActorRef, Props}
 import akka.cluster.Cluster
-import akka.cluster.ddata.{DistributedData, ORMultiMap, ORMultiMapKey, Replicator}
+import akka.cluster.ddata._
 import akka.cluster.ddata.Replicator._
 
 import scala.concurrent.duration._
@@ -34,17 +34,10 @@ class Authenticator extends Actor {
 
   def receiveRegister: Receive = {
 
-    case Register(userInfo: UserInfo) =>
-      (registeredUsers flatMap (_._2)).foldLeft(0) {
-        (acum: Int, ui: UserInfo) =>
-          ui match {
-            case ui if ui.id == userInfo.id => 1
-            case _ => 0
-          }
-      } match {
-        case 0 => sendUpdateMessage(userInfo, sender())
-        case _ =>
-      }
+    case Register(userInfo: UserInfo) if !registeredUsers.exists(_._2.exists(_.id == userInfo.id)) =>
+      sendUpdateMessage(userInfo, sender())
+    case Register(_) =>
+      Unit
 
     case _: UpdateResponse[ORMultiMap[ActorRef, UserInfo]] =>
   }
