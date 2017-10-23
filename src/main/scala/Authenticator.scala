@@ -29,11 +29,12 @@ class Authenticator extends Actor {
   val replicator = DistributedData(context.system).replicator
 
   val RegisteredUsersKey: ORMultiMapKey[ActorRef, UserInfo] = ORMultiMapKey[ActorRef, UserInfo]("logged-users")
-  val CounterUpdateMessagesByNodo = PNCounterMapKey[ActorRef]("Counter-UMBN-key")
+  val CounterUpdateMessagesByNodoKey = PNCounterMapKey[ActorRef]("Counter-UMBN-key")
+  val lastUpdaterKey = LWWRegisterKey[ActorRef]("last-updater-key")
 
   implicit val cluster = Cluster(context.system)
 
-  replicator ! Subscribe(CounterUpdateMessagesByNodo, self)
+  replicator ! Subscribe(CounterUpdateMessagesByNodoKey, self)
   replicator ! Subscribe(RegisteredUsersKey, self)
 
   var registeredUsers = Map.empty[ActorRef, Set[UserInfo]]
@@ -44,22 +45,17 @@ class Authenticator extends Actor {
     .orElse[Any, Unit](receiveUpdatesUsers)
     .orElse[Any, Unit](receiveUpdateCounter)
 
-  def receiveRegister: Receive = {
-
+  private def receiveRegister: Receive = {
     case Register(userInfo: UserInfo) if !registeredUsers.exists(_._2.exists(_.id == userInfo.id)) =>
       val sdr = sender()
       sendUpdateMessageRegisteredUser(userInfo, sdr)
       sendUpdateMessageCounter(sdr)
       //Para hacer que la data de replique inmediatamente
       replicator ! FlushChanges
-
-    case Register(_) =>
-      Unit
-
-    case _: UpdateResponse[ORMultiMap[ActorRef, UserInfo]] =>
+    case Register(_) => Unit
   }
 
-  def receiveGetUsers: Receive = {
+  private def receiveGetUsers: Receive = {
     case GetUsers =>
       replicator ! Get(RegisteredUsersKey, readMajority, Some(sender()))
     case getUsers@GetSuccess(RegisteredUsersKey, Some(replyTo: ActorRef)) =>
@@ -68,20 +64,20 @@ class Authenticator extends Actor {
     case NotFound(RegisteredUsersKey, Some(replyTo: ActorRef)) => Unit
   }
 
-  def receiveUpdatesUsers: Receive = {
+  private def receiveUpdatesUsers: Receive = {
     case changed@Changed(RegisteredUsersKey) =>
       registeredUsers = changed.get(RegisteredUsersKey).entries
   }
 
-  def receiveUpdateCounter: Receive = {
-    case changed@Changed(CounterUpdateMessagesByNodo) =>
-      counterUpdateMessagesByNodo = changed.get(CounterUpdateMessagesByNodo).entries
+  private def receiveUpdateCounter: Receive = {
+    case changed@Changed(CounterUpdateMessagesByNodoKey) =>
+      counterUpdateMessagesByNodo = changed.get(CounterUpdateMessagesByNodoKey).entries
     case GetCounterByNodoFromActor =>
       sender() ! counterUpdateMessagesByNodo
     case GetCounterByNodoFromCRDT =>
-      replicator ! Get(CounterUpdateMessagesByNodo, readMajority, Some(sender()))
-    case data@GetSuccess(CounterUpdateMessagesByNodo, Some(replyTo: ActorRef)) =>
-      replyTo ! data.get(CounterUpdateMessagesByNodo).entries
+      replicator ! Get(CounterUpdateMessagesByNodoKey, readMajority, Some(sender()))
+    case data@GetSuccess(CounterUpdateMessagesByNodoKey, Some(replyTo: ActorRef)) =>
+      replyTo ! data.get(CounterUpdateMessagesByNodoKey).entries
     case GetFailure(RegisteredUsersKey, Some(replyTo: ActorRef)) => Unit
     case NotFound(RegisteredUsersKey, Some(replyTo: ActorRef)) => Unit
   }
@@ -93,7 +89,7 @@ class Authenticator extends Actor {
   }
 
   private def sendUpdateMessageCounter(sdr: ActorRef): Unit = {
-    val update = Update(CounterUpdateMessagesByNodo, PNCounterMap.empty[ActorRef],
+    val update = Update(CounterUpdateMessagesByNodoKey, PNCounterMap.empty[ActorRef],
       writeMajority)(data => data.increment(sdr, 1))
     replicator ! update
   }
