@@ -1,3 +1,4 @@
+import Greeter.GetData
 import akka.actor.ActorRef
 import akka.cluster.Cluster
 import akka.cluster.ddata.DistributedData
@@ -79,5 +80,14 @@ class AuthenticatorSpec extends MultiNodeSpec(AuthenticatorSpec) with STMultiNod
         data.flatMap(_._2).size should be (3)
       }
     }
+
+    "Obtener el número de actualizaciones que ha hecho cada nodo" in within(10.seconds) {
+      awaitAssert {
+        authenticator ! GetCounterByNodoFromCRDT
+        val data = expectMsgType[Map[ActorRef, BigInt]]
+        data.values.sum should be(3)
+       }
+    }
+
   }
 }
