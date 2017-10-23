@@ -18,6 +18,8 @@ object Authenticator {
 
   case object GetLastUpdater
 
+  case object GetLastUpdateTimeByNodo
+
   final case class UserInfo(id: String, fullName: String, password: String)
 
   val writeMajority = WriteMajority(5.seconds)
@@ -33,20 +35,24 @@ class Authenticator extends Actor {
   private val RegisteredUsersKey: ORMultiMapKey[ActorRef, UserInfo] = ORMultiMapKey[ActorRef, UserInfo]("logged-users")
   private val CounterUpdateMessagesByNodoKey = PNCounterMapKey[ActorRef]("Counter-UMBN-key")
   private val LastUpdaterKey = LWWRegisterKey[ActorRef]("last-updater-key")
+  private val LastUpdateTimeByNodeKey = LWWMapKey[ActorRef, ActorRef]("last-update-time-node-key")
 
   implicit val cluster = Cluster(context.system)
 
   replicator ! Subscribe(CounterUpdateMessagesByNodoKey, self)
   replicator ! Subscribe(RegisteredUsersKey, self)
+  replicator ! Subscribe(LastUpdateTimeByNodeKey, self)
 
   private var registeredUsers = Map.empty[ActorRef, Set[UserInfo]]
   private var counterUpdateMessagesByNodo = Map.empty[ActorRef, BigInt]
+  private var lastUpdateTimeByNodo = Map.empty[ActorRef, Long]
 
   override def receive = receiveRegister
     .orElse[Any, Unit](receiveGetUsers)
     .orElse[Any, Unit](receiveUpdatesUsers)
     .orElse[Any, Unit](receiveUpdateCounter)
     .orElse[Any, Unit](receiveLastUpdater)
+    .orElse[Any, Unit](receiveLastUpdateTimeByNode)
 
   private def receiveRegister: Receive = {
     case Register(userInfo: UserInfo) if !registeredUsers.exists(_._2.exists(_.id == userInfo.id)) =>
@@ -54,6 +60,7 @@ class Authenticator extends Actor {
       sendUpdateMessageRegisteredUser(userInfo, sdr)
       sendUpdateMessageCounter(sdr)
       sendUpdateMessageLastUpdater(sdr)
+
       //Para hacer que la data de replique inmediatamente
       replicator ! FlushChanges
     case Register(_) => Unit
@@ -98,6 +105,13 @@ class Authenticator extends Actor {
       replyTo ! None
   }
 
+  private def receiveLastUpdateTimeByNode: Receive = {
+    case GetLastUpdateTimeByNodo =>
+      replicator ! Get(LastUpdateTimeByNodeKey, readMajority, Some(sender()))
+    case g @ GetSuccess(LastUpdateTimeByNodeKey, Some(replyTo: ActorRef)) =>
+      //Building
+  }
+
   private def sendUpdateMessageRegisteredUser(userInfo: UserInfo, sdr: ActorRef): Unit = {
     val update = Update(RegisteredUsersKey, ORMultiMap.empty[ActorRef, UserInfo],
       writeMajority)(data => data.addBinding(sdr, userInfo))
@@ -114,6 +128,11 @@ class Authenticator extends Actor {
     val update = Update(LastUpdaterKey, LWWRegister(snd),
       writeMajority)(data => data.withValue(snd))
     replicator ! update
+  }
+
+  private def sendUpdateMessageLastUpdateTime(sdr: ActorRef): Unit = {
+    val update = Update(LastUpdateTimeByNodeKey, LWWMap(),
+      writeMajority, None)(data => data + (sdr, sdr))
   }
 
 }
