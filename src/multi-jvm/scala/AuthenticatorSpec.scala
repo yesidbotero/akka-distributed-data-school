@@ -1,4 +1,3 @@
-import Greeter.GetData
 import akka.actor.ActorRef
 import akka.cluster.Cluster
 import akka.cluster.ddata.DistributedData
@@ -60,11 +59,11 @@ class AuthenticatorSpec extends MultiNodeSpec(AuthenticatorSpec) with STMultiNod
       awaitAssert {
         authenticator ! GetUsers
         val data = expectMsgType[Map[ActorRef, Set[UserInfo]]]
-        data.flatMap(_._2).size should be (2)
+        data.flatMap(_._2).size should be(2)
       }
     }
 
-    "No almacenar usuarios ya registrados" in within(10.seconds){
+    "No almacenar usuarios ya registrados" in within(10.seconds) {
       runOn(node1) {
         authenticator ! Register(UserInfo("1035873906", "Yesid Botero", "zzc123"))
         authenticator ! Register(UserInfo("1035873908", "Juan Mieles", "zzc123"))
@@ -77,7 +76,7 @@ class AuthenticatorSpec extends MultiNodeSpec(AuthenticatorSpec) with STMultiNod
       awaitAssert {
         authenticator ! GetUsers
         val data = expectMsgType[Map[ActorRef, Set[UserInfo]]]
-        data.flatMap(_._2).size should be (3)
+        data.flatMap(_._2).size should be(3)
       }
     }
 
@@ -86,8 +85,14 @@ class AuthenticatorSpec extends MultiNodeSpec(AuthenticatorSpec) with STMultiNod
         authenticator ! GetCounterByNodoFromCRDT
         val data = expectMsgType[Map[ActorRef, BigInt]]
         data.values.sum should be(3)
-       }
+      }
     }
 
+    "obtener el ultimo actor que hizo una actualizacion" in within(10.seconds) {
+      awaitAssert {
+        authenticator ! GetLastUpdater
+        val  actorRef = expectMsgType[ActorRef]
+      }
+    }
   }
 }
