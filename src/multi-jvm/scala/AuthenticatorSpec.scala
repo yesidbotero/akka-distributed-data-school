@@ -91,7 +91,7 @@ class AuthenticatorSpec extends MultiNodeSpec(AuthenticatorSpec) with STMultiNod
     "obtener el ultimo actor que hizo una actualizacion" in within(10.seconds) {
       awaitAssert {
         authenticator ! GetLastUpdater
-        val  actorRef = expectMsgType[ActorRef]
+        val actorRef = expectMsgType[ActorRef]
       }
     }
   }
